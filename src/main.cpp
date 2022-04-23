@@ -17,21 +17,124 @@ uint8_t color =0;
 uint8_t brightness = 255;
 uint32_t R,G,B;
 const boolean invert =true;
+boolean tempButton = false;
+boolean rgbButton = false;
 
+String tempButtonString = "";
+String rgbButtonString = "";
+int apiName = 0;
 #define EEPROM_SIZE 12
-
 
 // const char* ssid = "BT-6ZAGW5";
 // const char* password = "PvhViqdkLc7nCR";
-const char* ssid = "10DC Hyperoptic 1Gb Fibre 2.4Ghz";
-const char* password = "Michael0408.";
+// const char* ssid = "10DC Hyperoptic 1Gb Fibre 2.4Ghz";
+// const char* password = "Michael0408.";
+const char* ssid = "PLUSNET-GXC585";
+const char* password = "dpFrfrcvXNt79T";
 WebServer server(80);
-String apiName = "";
 int address = 0;
 // Serving Hello world
 
 float temperature = 0;
 DHT dht(tempSensorPin,DHT22);
+
+void getRGBLight(){
+  if (digitalRead(sensorPin)==HIGH){
+    RGB(apiName,255);
+      ledcWrite(0,R);
+      ledcWrite(1,G);
+      ledcWrite(2,B);
+  }
+}
+
+void setRgbController(){
+  String postBody = server.arg("plain");
+    DynamicJsonDocument doc(512);
+    DeserializationError parsingError = deserializeJson(doc, postBody);
+
+    //if there is error in the recieved json object
+    if (parsingError) {
+        server.send(400, F("text/html"),"Error in parsin json body! <br>");
+ 
+    } 
+    //if the object is able to be parsed
+    else {
+      //create a json object
+        JsonObject postObj = doc.as<JsonObject>();
+        //if the method is post
+        if (server.method() == HTTP_POST) {
+          //if the post request has whats needed
+            if (postObj.containsKey("color")) {
+ 
+                Serial.println(F("done."));
+                int lolLmao= doc["color"];
+                apiName=lolLmao;
+                Serial.println(lolLmao);
+                
+                //creating data to send as a response to the main thing 
+                DynamicJsonDocument doc(512);
+                //populating the json Object
+                doc["status"] = "OK";
+                String buf;
+                //serialising data
+                serializeJson(doc, buf);
+                
+                server.send(201, F("application/json"), buf);
+                
+ 
+            }else {
+                DynamicJsonDocument doc(512);
+                doc["status"] = "KO";
+                doc["message"] = F("No data found, or incorrect!");
+ 
+                Serial.print(F("Stream..."));
+                String buf;
+                serializeJson(doc, buf);
+ 
+                server.send(400, F("application/json"), buf);
+                Serial.print(F("done."));
+            }
+        }
+    }
+}
+
+void getRgbController(){
+  String hel = "";
+  hel.concat(apiName);
+  server.send(200, F("text/plain"), hel);
+}
+
+void turnOnRGBButton(){
+  if(rgbButton==false){
+    rgbButton=true;
+  }
+  rgbButtonString.concat(rgbButton);
+  server.send(200, F("text/plain"), rgbButtonString);
+}
+
+void turnOffRGBButton(){
+  if(rgbButton==true){
+    rgbButton=false;
+  }
+  rgbButtonString.concat(rgbButton);
+  server.send(200, F("text/plain"), rgbButtonString);
+}
+
+void turnOnTempButton(){
+  if(tempButton==false){
+    tempButton=true;
+  }
+  tempButtonString.concat(tempButton);
+  server.send(200, F("text/plain"), tempButtonString);
+}
+
+void turnOffTempButton(){
+  if(tempButton==true){
+    tempButton=false;
+  }
+  tempButtonString.concat(tempButton);
+  server.send(200, F("text/plain"), tempButtonString);
+}
 
 void RGB(uint8_t hue, uint8_t brightness)
 {
@@ -89,6 +192,9 @@ void RGB(uint8_t hue, uint8_t brightness)
 }
 
 void motionDetect(){
+  String motion = "";
+  motion.concat(digitalRead(sensorPin));
+  server.send(200,F("text/plain"),motion);
   if (digitalRead(sensorPin)==HIGH){
     for(color=0;color<255;color++){
       RGB(color,brightness);
@@ -97,100 +203,105 @@ void motionDetect(){
       ledcWrite(2,B);
       delay(10);
     }
+  }else{
+    ledcWrite(0,0);
+    ledcWrite(1,0);
+    ledcWrite(2,0);
   }
 }
 
 void getTemperature(){
   temperature = dht.readTemperature();
-  if(temperature>22){
+  String temp = "";
+  temp.concat(temperature);
+  if(digitalRead(sensorPin)==HIGH && temperature>22){
     ledcWrite(2,B);
   }
-  else if(temperature<5){
+  else if(digitalRead(sensorPin)==HIGH && temperature<5){
     ledcWrite(0,R);
   }
   else{
-    ledcWrite(0,R);
-    ledcWrite(1,G);
-    ledcWrite(2,B);
+    motionDetect();
   }
+  server.send(200,F("text/plain"),temp);
 }
 
-void setRoom() {
-    String postBody = server.arg("plain");
-    DynamicJsonDocument doc(512);
-    DeserializationError parsingError = deserializeJson(doc, postBody);
+// void setRoom() {
+//     String postBody = server.arg("plain");
+//     DynamicJsonDocument doc(512);
+//     DeserializationError parsingError = deserializeJson(doc, postBody);
 
-    //if there is error in the recieved json object
-    if (parsingError) {
-        server.send(400, F("text/html"),"Error in parsin json body! <br>");
+//     //if there is error in the recieved json object
+//     if (parsingError) {
+//         server.send(400, F("text/html"),"Error in parsin json body! <br>");
  
-    } 
-    //if the object is able to be parsed
-    else {
-      //create a json object
-        JsonObject postObj = doc.as<JsonObject>();
-        //if the method is post
-        if (server.method() == HTTP_POST) {
-          //if the post request has whats needed
-            if (postObj.containsKey("name")) {
+//     } 
+//     //if the object is able to be parsed
+//     else {
+//       //create a json object
+//         JsonObject postObj = doc.as<JsonObject>();
+//         //if the method is post
+//         if (server.method() == HTTP_POST) {
+//           //if the post request has whats needed
+//             if (postObj.containsKey("name")) {
  
-                Serial.println(F("done."));
-                String lolLmao= doc["name"];
-                apiName=lolLmao;
-                Serial.println(lolLmao);
-                EEPROM.begin(EEPROM_SIZE);
-                for(int i=0;i<apiName.length();i++){
-                  EEPROM.write(address,apiName[i]);
-                  address++;
-                }
+//                 Serial.println(F("done."));
+//                 String lolLmao= doc["name"];
+//                 apiName=lolLmao;
+//                 Serial.println(lolLmao);
+//                 EEPROM.begin(EEPROM_SIZE);
+//                 for(int i=0;i<apiName.length();i++){
+//                   EEPROM.write(address,apiName[i]);
+//                   address++;
+//                 }
 
-                EEPROM.write(address,'\0');
-                EEPROM.end();
-                //creating data to send as a response to the main thing 
-                DynamicJsonDocument doc(512);
-                //populating the json Object
-                doc["status"] = "OK";
-                String buf;
-                //serialising data
-                serializeJson(doc, buf);
+//                 EEPROM.write(address,'\0');
+//                 EEPROM.end();
+//                 //creating data to send as a response to the main thing 
+//                 DynamicJsonDocument doc(512);
+//                 //populating the json Object
+//                 doc["status"] = "OK";
+//                 String buf;
+//                 //serialising data
+//                 serializeJson(doc, buf);
                 
-                server.send(201, F("application/json"), buf);
+//                 server.send(201, F("application/json"), buf);
                 
  
-            }else {
-                DynamicJsonDocument doc(512);
-                doc["status"] = "KO";
-                doc["message"] = F("No data found, or incorrect!");
+//             }else {
+//                 DynamicJsonDocument doc(512);
+//                 doc["status"] = "KO";
+//                 doc["message"] = F("No data found, or incorrect!");
  
-                Serial.print(F("Stream..."));
-                String buf;
-                serializeJson(doc, buf);
+//                 Serial.print(F("Stream..."));
+//                 String buf;
+//                 serializeJson(doc, buf);
  
-                server.send(400, F("application/json"), buf);
-                Serial.print(F("done."));
-            }
-        }
-    }
-}
+//                 server.send(400, F("application/json"), buf);
+//                 Serial.print(F("done."));
+//             }
+//         }
+//     }
+// }
  
-void getRoom(){
-  EEPROM.begin(EEPROM_SIZE);
-  EEPROM.read(address);
-  char c;
-  int currAddr = 0;
-  String data = "";
-  while(c != '\0'){
-    c = EEPROM.read(currAddr);
-    if(c!='\0'){
-      data+=c;
-    }
-    currAddr++;
-  }
-  Serial.println(data);
-  EEPROM.end();
-  server.send(200,F("text/plain"),data);
+// void getRoom(){
+//   EEPROM.begin(EEPROM_SIZE);
+//   EEPROM.read(address);
+//   char c;
+//   int currAddr = 0;
+//   String data = "";
+//   while(c != '\0'){
+//     c = EEPROM.read(currAddr);
+//     if(c!='\0'){
+//       data+=c;
+//     }
+//     currAddr++;
+//   }
+//   Serial.println(data);
+//   EEPROM.end();
+//   server.send(200,F("text/plain"),data);
     
-}
+// }
 // Define routing
 void restServerRouting() {
     server.on("/", HTTP_GET, []() {
@@ -198,8 +309,14 @@ void restServerRouting() {
             F("Welcome to the REST Web Server"));
     });
     // handle post request
-    server.on(F("/setRoom"), HTTP_POST, setRoom);
-    server.on(F("/getRoom"), HTTP_GET, getRoom);
+    server.on(F("/setRGB"), HTTP_POST, setRgbController);
+    server.on(F("/getRGB"), HTTP_GET, getRgbController);
+    server.on(F("/getTemperature"), HTTP_GET, getTemperature);
+    server.on(F("/getMotion"), HTTP_GET, motionDetect);
+    server.on(F("/turnOnTempButton"), HTTP_GET, turnOnTempButton);
+    server.on(F("/turnOffTempButton"), HTTP_GET, turnOffTempButton);
+    server.on(F("/turnOnRGBButton"), HTTP_GET, turnOnRGBButton);
+    server.on(F("/turnOffRGBButton"), HTTP_GET, turnOffRGBButton);
 }
  
 // Manage not found URL
@@ -266,5 +383,13 @@ void setup(void) {
 
 void loop(void) {
   server.handleClient();
-  motionDetect();
+  if(tempButton==false){
+    if(rgbButton==false){
+      motionDetect();
+    }else{
+      getRGBLight();
+    }
+  }else{
+    getTemperature();
+  }
 }
