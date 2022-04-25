@@ -4,8 +4,9 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
-#include <EEPROM.h>
+//#include <EEPROM.h>
 #include <analogWrite.h>
+#include <WiFiManager.h>
 
 #include"DHT.h"
 #define tempSensorPin 27
@@ -23,14 +24,14 @@ boolean rgbButton = false;
 String tempButtonString = "";
 String rgbButtonString = "";
 int apiName = 0;
-#define EEPROM_SIZE 12
+//#define EEPROM_SIZE 12
 
 // const char* ssid = "BT-6ZAGW5";
 // const char* password = "PvhViqdkLc7nCR";
 // const char* ssid = "10DC Hyperoptic 1Gb Fibre 2.4Ghz";
 // const char* password = "Michael0408.";
-const char* ssid = "PLUSNET-GXC585";
-const char* password = "dpFrfrcvXNt79T";
+// const char* ssid = "PLUSNET-GXC585";
+// const char* password = "dpFrfrcvXNt79T";
 WebServer server(80);
 int address = 0;
 // Serving Hello world
@@ -44,6 +45,11 @@ void getRGBLight(){
       ledcWrite(0,R);
       ledcWrite(1,G);
       ledcWrite(2,B);
+  }
+  else{
+    ledcWrite(0,0);
+    ledcWrite(1,0);
+    ledcWrite(2,0);
   }
 }
 
@@ -351,17 +357,47 @@ void setup(void) {
   ledcSetup(2,5000,8);
   ledcAttachPin(blue,2);
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  Serial.println("");
+  // WiFi.mode(WIFI_STA);
+  // WiFi.begin(ssid, password);
+  // Serial.println("");
   // Wait for connection
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+    // it is a good practice to make sure your code sets wifi mode how you want it.
+
+    // put your setup code here, to run once:
+    
+    //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
+    WiFiManager wm;
+
+    // reset settings - wipe stored credentials for testing
+    // these are stored by the esp library
+    //wm.resetSettings();
+
+    // Automatically connect using saved credentials,
+    // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
+    // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+    // then goes into a blocking loop awaiting configuration and will return success result
+
+    bool res;
+    // res = wm.autoConnect(); // auto generated AP name from chipid
+    // res = wm.autoConnect("AutoConnectAP"); // anonymous ap
+    res = wm.autoConnect("AutoConnectAP","password"); // password protected ap
+
+    if(!res) {
+        Serial.println("Failed to connect");
+        // ESP.restart();
+    } 
+    else {
+        //if you get here you have connected to the WiFi    
+        Serial.println("connected...yeey :)");
+    }
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("");
   Serial.print("Connected to ");
-  Serial.println(ssid);
+  
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
  
