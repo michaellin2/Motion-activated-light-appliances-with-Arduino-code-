@@ -28,7 +28,7 @@ boolean rgbButton = false;
 
 String tempButtonString = "";
 String rgbButtonString = "";
-int data = 0;
+int colorCode = 0;
 int address = 0;
 float temperature = 0;
 
@@ -47,7 +47,7 @@ void getRGBLight()
 {
   if (digitalRead(sensorPin) == HIGH)
   {
-    RGB(apiName, 255);
+    RGB(colorCode, 255);
     ledcWrite(0, R);
     ledcWrite(1, G);
     ledcWrite(2, B);
@@ -85,7 +85,9 @@ void setRgbController()
       if (postObj.containsKey("color"))
       {
         int Color = doc["color"];
-        data = Color;
+        Serial.println(Color);
+        colorCode = Color;
+        Serial.println(colorCode);
 
         // creating data to send as a response to the main thing
         DynamicJsonDocument doc(512);
@@ -117,7 +119,7 @@ void setRgbController()
 void getRgbController()
 {
   String hel = "";
-  hel.concat(apiName);
+  hel.concat(colorCode);
   server.send(200, F("text/plain"), hel);
 }
 
@@ -278,7 +280,6 @@ void wifiManagement()
 {
   // explicitly set mode, esp defaults to STA+AP
   WiFi.mode(WIFI_STA); 
-
   // Automatically connect using saved credentials,
   // if connection fails, it starts an access point with the specified name ( "AutoConnectAP"),
   // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
