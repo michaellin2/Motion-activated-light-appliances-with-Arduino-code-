@@ -4,17 +4,24 @@
 #include <WebServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
-#include <EEPROM.h>
 #include <analogWrite.h>
 #include <WiFiManager.h>
 #include "DHT.h"
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 #define tempSensorPin 27
 #define sensorPin 26
 #define red 25
 #define green 23
 #define blue 32
-#define EEPROM_SIZE 1
-//#define EEPROM_SIZE 12
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin 
+#define SCREEN_ADDRESS 0x3C 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // initialize web server ports
 WebServer server(80);
@@ -232,7 +239,7 @@ void motionDetect()
 {
   String motion = "";
   motion.concat(digitalRead(sensorPin));
-  server.send(200, F("text/plain"), motion);
+  Serial.println(motion);
   if (digitalRead(sensorPin) == HIGH)
   {
     for (color = 0; color < 255; color++)
@@ -250,6 +257,7 @@ void motionDetect()
     ledcWrite(1, 0);
     ledcWrite(2, 0);
   }
+  server.send(200, F("text/plain"), motion);
 }
 
 //get the current temperature and check if its higher than 22 or lower than 5.
@@ -263,6 +271,7 @@ void getTemperature()
   if (digitalRead(sensorPin) == HIGH && temperature > 22)
   {
     ledcWrite(2, B);
+    
   }
   else if (digitalRead(sensorPin) == HIGH && temperature < 5)
   {
@@ -308,75 +317,6 @@ void wifiManagement()
   Serial.println(WiFi.localIP());
 }
 
-// void setRoom() {
-//     String postBody = server.arg("plain");
-//     DynamicJsonDocument doc(512);
-//     DeserializationError parsingError = deserializeJson(doc, postBody);
-//     //if there is error in the recieved json object
-//     if (parsingError) {
-//         server.send(400, F("text/html"),"Error in parsin json body! <br>");
-//     }
-//     //if the object is able to be parsed
-//     else {
-//       //create a json object
-//         JsonObject postObj = doc.as<JsonObject>();
-//         //if the method is post
-//         if (server.method() == HTTP_POST) {
-//           //if the post request has whats needed
-//             if (postObj.containsKey("name")) {
-//                 Serial.println(F("done."));
-//                 String lolLmao= doc["name"];
-//                 apiName=lolLmao;
-//                 Serial.println(lolLmao);
-//                 EEPROM.begin(EEPROM_SIZE);
-//                 for(int i=0;i<apiName.length();i++){
-//                   EEPROM.write(address,apiName[i]);
-//                   address++;
-//                 }
-//                 EEPROM.write(address,'\0');
-//                 EEPROM.end();
-//                 //creating data to send as a response to the main thing
-//                 DynamicJsonDocument doc(512);
-//                 //populating the json Object
-//                 doc["status"] = "OK";
-//                 String buf;
-//                 //serialising data
-//                 serializeJson(doc, buf);
-//                 server.send(201, F("application/json"), buf);
-//             }else {
-//                 DynamicJsonDocument doc(512);
-//                 doc["status"] = "KO";
-//                 doc["message"] = F("No data found, or incorrect!");
-//                 Serial.print(F("Stream..."));
-//                 String buf;
-//                 serializeJson(doc, buf);
-//                 server.send(400, F("application/json"), buf);
-//                 Serial.print(F("done."));
-//             }
-//         }
-//     }
-// }
-
-// void getRoom(){
-//   EEPROM.begin(EEPROM_SIZE);
-//   EEPROM.read(address);
-//   char c;
-//   int currAddr = 0;
-//   String data = "";
-//   while(c != '\0'){
-//     c = EEPROM.read(currAddr);
-//     if(c!='\0'){
-//       data+=c;
-//     }
-//     currAddr++;
-//   }
-//   Serial.println(data);
-//   EEPROM.end();
-//   server.send(200,F("text/plain"),data);
-// }
-// Define routing
-
-//creating request to send to server
 void restServerRouting()
 {
   server.on("/", HTTP_GET, []()
@@ -412,6 +352,26 @@ void handleNotFound()
   server.send(404, "text/plain", message);
 }
 
+//Display the ip address on the oled screen
+void oledDisplay(IPAddress wifiAddress){
+  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  // Clear the buffer
+  display.clearDisplay();
+  Serial.println("cleared");
+  // Draw a single pixel in white
+ 
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,28);
+  display.println(wifiAddress);
+  display.display();
+  delay(5000);
+  display.clearDisplay();
+}
+
 void setup(void)
 {
   //setup the arudino
@@ -419,6 +379,7 @@ void setup(void)
 
   //setup the temperature sensor
   dht.begin();
+  SPI.begin();
 
   // set up the motion sensor
   pinMode(sensorPin, INPUT);
@@ -436,6 +397,8 @@ void setup(void)
   //calling the wifimanagement function to configure the device
   wifiManagement();
 
+  //calling the oledDisplay function to dislay the ipaddress
+  oledDisplay(WiFi.localIP());
   // Set server routing
   restServerRouting();
   // Set not found response
