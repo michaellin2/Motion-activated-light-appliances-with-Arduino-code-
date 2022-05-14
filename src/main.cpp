@@ -363,7 +363,7 @@ void oledDisplay(IPAddress wifiAddress){
   Serial.println("cleared");
   // Draw a single pixel in white
  
-  display.setTextSize(1);
+  display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(0,28);
   display.println(wifiAddress);
