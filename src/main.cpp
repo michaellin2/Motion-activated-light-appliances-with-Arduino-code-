@@ -26,6 +26,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // initialize web server ports
 WebServer server(80);
 
+// initalise global variables
 uint8_t color = 0;
 uint8_t brightness = 255;
 uint32_t R, G, B;
@@ -239,7 +240,6 @@ void motionDetect()
 {
   String motion = "";
   motion.concat(digitalRead(sensorPin));
-  Serial.println(motion);
   if (digitalRead(sensorPin) == HIGH)
   {
     for (color = 0; color < 255; color++)
@@ -416,7 +416,7 @@ void loop(void)
   //else if the rgb button is pressed, run the getrgblight function. 
   if (tempButton == false)
   {
-    if (rgbButton == false)
+    if (rgbButton == false) 
     {
       motionDetect();
     }
